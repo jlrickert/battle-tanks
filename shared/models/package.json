@@ -1,0 +1,5 @@
+{
+	"name": "@shared/models",
+	"private": true,
+	"type": "module"
+}
