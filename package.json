@@ -1,0 +1,27 @@
+{
+	"name": "battle-tanks",
+	"version": "0.1.0",
+	"description": "",
+	"main": "index.js",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"release": "changeset version"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@changesets/cli": "^2.26.2",
+		"eslint": "8.28.0",
+		"eslint-config-prettier": "8.5.0",
+		"eslint-plugin-svelte": "2.30.0",
+		"prettier": "2.8.0",
+		"prettier-plugin-svelte": "2.10.1",
+		"@sveltejs/eslint-config": "^6.0.4"
+	},
+	"packageManager": "pnpm@8.8.1",
+	"engines": {
+		"pnpm": "^8.0.0"
+	}
+}
