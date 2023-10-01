@@ -1,6 +1,5 @@
 {
 	"root": true,
-	"extends": "@sveltejs",
 	"env": {
 		"es2022": true
 	},
