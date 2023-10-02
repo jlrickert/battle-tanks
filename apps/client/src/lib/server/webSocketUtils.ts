@@ -5,6 +5,7 @@ import type { WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { getLogger } from './logger';
+import { getGlobalThis, setGlobalThis } from './globals';
 
 export const wssLog = getLogger().child({ scope: 'wss' });
 
@@ -25,10 +26,6 @@ export type ExtendedWebSocketServer = ReturnType<
 	typeof createWSSGlobalInstance
 >;
 
-export type ExtendedGlobal = typeof globalThis & {
-	[GlobalThisWSS]: ExtendedWebSocketServer;
-};
-
 export const onHttpServerUpgrade = (
 	req: IncomingMessage,
 	sock: Duplex,
@@ -37,7 +34,7 @@ export const onHttpServerUpgrade = (
 	const pathname = req.url ? parse(req.url).pathname : null;
 	if (pathname !== '/websocket') return;
 
-	const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
+	const wss = getGlobalThis()[GlobalThisWSS];
 
 	wss.handleUpgrade(req, sock, head, (ws) => {
 		wssLog.debug('Connection upgraded');
@@ -63,11 +60,11 @@ export const createWSSGlobalInstance = () => {
 };
 
 export const getGlobalWSSInstance = () => {
-	const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
+	const wss = getGlobalThis()[GlobalThisWSS];
 	if (wss) {
 		return wss;
 	}
 
-	(globalThis as ExtendedGlobal)[GlobalThisWSS] = createWSSGlobalInstance();
-	return (globalThis as ExtendedGlobal)[GlobalThisWSS];
+	setGlobalThis(GlobalThisWSS, createWSSGlobalInstance());
+	return getGlobalThis()[GlobalThisWSS];
 };

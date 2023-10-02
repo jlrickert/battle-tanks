@@ -1,14 +1,14 @@
 import { building } from '$app/environment';
+import type { Handle } from '@sveltejs/kit';
 import {
 	GlobalThisWSS,
 	getGlobalWSSInstance,
 	wssLog,
 } from '$lib/server/webSocketUtils';
-import type { Handle } from '@sveltejs/kit';
-import type {
-	ExtendedGlobal,
-	ExtendedWebSocket,
-} from '$lib/server/webSocketUtils';
+import type { ExtendedWebSocket } from '$lib/server/webSocketUtils';
+import { getGlobalThis } from '$lib/server/globals';
+import { GlobalThisRTS } from '$lib/server/realtime';
+import { GlobalThisRedis } from '$lib/server/redis';
 
 // This can be extracted into a separate file
 let wssInitialized = false;
@@ -55,9 +55,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 	startupWebsocketServer();
 	// Skip WebSocket server when pre-rendering pages
 	if (!building) {
-		const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
+		const wss = getGlobalThis()[GlobalThisWSS];
 		if (wss !== undefined) {
 			event.locals.wss = wss;
+		}
+
+		const rts = getGlobalThis()[GlobalThisRTS];
+		if (rts !== undefined) {
+			event.locals.rts = rts;
+		}
+
+		const redis = getGlobalThis()[GlobalThisRedis];
+		if (redis !== undefined) {
+			event.locals.redis = redis;
 		}
 	}
 	const response = await resolve(event, {
@@ -65,3 +75,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	});
 	return response;
 };
+
+function shutdownGracefully() {
+	// anything you need to clean up manually goes in here
+	wssLog.info('Shutting down');
+}
+
+process.on('SIGINT', shutdownGracefully);
+process.on('SIGTERM', shutdownGracefully);

@@ -1,11 +1,14 @@
-// import { env } from '$env/dynamic/private';
 import { z } from 'zod';
-import type { Level } from './logger';
-import { env } from '$env/dynamic/private';
+import { getLogger, type Level } from './logger';
+import dotenv from 'dotenv';
+import { nanoid } from 'nanoid';
+
+dotenv.config();
 
 const envSchema = z.object({
 	BATTLE_TANKS_URL: z.string().url(),
 	BATTLE_TANKS_REDIS: z.string().url(),
+	BATTLE_TANKS_MONGO_URI: z.string().url(),
 	BATTLE_TANKS_LOG_LEVEL: z
 		.string()
 		.transform((a) => a.toLowerCase())
@@ -20,15 +23,17 @@ const envSchema = z.object({
 
 const createConfig = () => {
 	try {
-		const parsedEnv = envSchema.parse(env);
-		console.log({ parsedEnv });
+		const parsedEnv = envSchema.parse(process.env);
 		return {
 			url: parsedEnv.BATTLE_TANKS_URL,
-			redisUrl: parsedEnv.BATTLE_TANKS_REDIS,
+			instanceId: nanoid(),
+			mongoURI: parsedEnv.BATTLE_TANKS_MONGO_URI,
+			redisURI: parsedEnv.BATTLE_TANKS_REDIS,
 			logLevel: parsedEnv.BATTLE_TANKS_LOG_LEVEL,
 		};
 	} catch (e) {
 		console.error(`Unable to load config: ${JSON.stringify(e)}`);
+		throw e;
 	}
 };
 export type Config = ReturnType<typeof createConfig>;
@@ -38,11 +43,8 @@ export const getConfig = () => {
 	if (config) {
 		return config;
 	}
-	const parsedEnv = envSchema.parse(process.env);
-	config = {
-		url: parsedEnv.BATTLE_TANKS_URL,
-		redisUrl: parsedEnv.BATTLE_TANKS_REDIS,
-		logLevel: parsedEnv.BATTLE_TANKS_LOG_LEVEL,
-	};
+	config = createConfig();
+	getLogger().child({ scope: 'config' }).debug({ config }, 'config loaded');
+	console.log('WHAT');
 	return config;
 };
