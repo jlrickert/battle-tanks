@@ -2,6 +2,7 @@ import { building } from '$app/environment';
 import {
 	GlobalThisWSS,
 	getGlobalWSSInstance,
+	wssLog,
 } from '$lib/server/webSocketUtils';
 import type { Handle } from '@sveltejs/kit';
 import type {
@@ -13,15 +14,16 @@ import type {
 let wssInitialized = false;
 const startupWebsocketServer = () => {
 	if (wssInitialized) return;
-	console.log('[wss:kit] setup');
+	wssLog.trace('Setup server');
 	const wss = getGlobalWSSInstance();
 	if (wss !== undefined) {
 		wss.on('connection', (ws: ExtendedWebSocket) => {
+			const log = wssLog.child({ socketId: ws.socketId });
+			log.debug(`client connected`);
 			// This is where you can authenticate the client from the request
 			// const session = await getSessionFromCookie(request.headers.cookie || '');
 			// if (!session) ws.close(1008, 'User not authenticated');
 			// ws.userId = session.userId;
-			console.log(`[wss:kit] client connected (${ws.socketId})`);
 			ws.send(
 				`Hello from SvelteKit ${new Date().toLocaleString()} (${
 					ws.socketId
@@ -29,14 +31,21 @@ const startupWebsocketServer = () => {
 			);
 
 			const pid = setInterval(() => {
-				ws.send('Ping');
-				console.log(`[wss:kit] ping ${ws.socketId}`);
+				ws.send(`Ping, ${ws.socketId}`);
+				log.debug(`ping`);
 			}, 5000);
 
+			ws.on('error', (error) => {
+				log.error({ error }, 'some error detected');
+			});
+
 			ws.on('close', () => {
-				console.log(`[wss:kit] client disconnected (${ws.socketId})`);
+				log.debug(`client disconnected`);
 				clearInterval(pid);
 			});
+		});
+		wss.on('close', () => {
+			wssLog.debug('Server closed');
 		});
 		wssInitialized = true;
 	}

@@ -4,6 +4,9 @@ import { nanoid } from 'nanoid';
 import type { WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
+import { getLogger } from './logger';
+
+export const wssLog = getLogger().child({ scope: 'wss' });
 
 export const GlobalThisWSS = Symbol.for('sveltekit.wss');
 
@@ -37,7 +40,7 @@ export const onHttpServerUpgrade = (
 	const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
 
 	wss.handleUpgrade(req, sock, head, (ws) => {
-		console.log('[handleUpgrade] creating new connection');
+		wssLog.debug('Connection upgraded');
 		wss.emit('connection', ws, req);
 	});
 };
@@ -49,10 +52,10 @@ export const createWSSGlobalInstance = () => {
 
 	wss.on('connection', (ws: ExtendedWebSocket) => {
 		ws.socketId = nanoid();
-		console.log(`[wss:global] client connected (${ws.socketId})`);
+		wssLog.debug(`client connected (${ws.socketId}`);
 
 		ws.on('close', () => {
-			console.log(`[wss:global] client disconnected (${ws.socketId})`);
+			wssLog.debug(`client disconnected (${ws.socketId})`);
 		});
 	});
 

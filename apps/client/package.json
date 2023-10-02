@@ -36,6 +36,7 @@
 	"dependencies": {
 		"@shared/models": "workspace:*",
 		"nanoid": "^5.0.1",
+		"pino": "^8.15.3",
 		"ws": "^8.14.2"
 	},
 	"type": "module",
