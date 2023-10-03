@@ -25,7 +25,9 @@
 		});
 		ws.addEventListener('message', (event) => {
 			console.log('[websocket] message received', event);
-			logEvent(`[websocket] message received: ${event.data}`);
+			logEvent(
+				`[websocket] message received: ${JSON.stringify(event.data)}`,
+			);
 		});
 	};
 

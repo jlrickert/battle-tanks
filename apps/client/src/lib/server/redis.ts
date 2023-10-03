@@ -1,25 +1,35 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import redis from 'redis';
-import { getConfig } from './config';
-import { getLogger } from './logger';
-
-const redisLog = getLogger().child({ scope: 'redis' });
+import { getGlobalConfig } from './config';
+import { getGlobalLogger, type Logger } from './logger';
 
 export const GlobalThisRedis = Symbol.for('sveltekit.redis');
+export const REDIS_SCOPE = 'redis';
 
-export type RedisClient = ReturnType<typeof createRedisClient>;
+type Client = ReturnType<typeof createRedisClient>;
 
 const createRedisClient = () => {
-	const config = getConfig();
+	const config = getGlobalConfig();
 	const client = redis.createClient({
 		url: config.redisURI,
 	});
 	return client;
 };
 
-let redisClient: ReturnType<typeof createRedisClient>;
-export const getGlobalRedisClient = () => {
-	if (redisClient) {
-		redisClient = createRedisClient();
+export class RedisClient {
+	private log: Logger;
+	constructor(private redis: Client) {
+		this.log = getGlobalLogger().child({ scope: REDIS_SCOPE });
 	}
-	return redisClient;
+}
+
+export const getGlobalRedisClient = (): RedisClient => {
+	const client = (globalThis as any)[GlobalThisRedis];
+	if (client) {
+		return client;
+	}
+
+	const redisClient = createRedisClient();
+	(globalThis as any)[GlobalThisRedis] = new RedisClient(redisClient);
+	return (globalThis as any)[GlobalThisRedis];
 };

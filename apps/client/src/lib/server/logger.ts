@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import pino from 'pino';
-import { getConfig, type Config } from './config';
+import { getGlobalConfig } from './config';
+
+const GlobalThisLogger = Symbol.for('sveltekit.logger');
 
 export type Logger = ReturnType<typeof createLogger>;
 export type Level = 'trace' | 'debug' | 'warn' | 'info' | 'error' | 'critical';
 
-const createLogger = (config: Config) => {
+const createLogger = () => {
+	const config = getGlobalConfig();
 	const transport = pino.transport({
 		target: 'pino-mongodb',
 		options: {
@@ -15,19 +19,21 @@ const createLogger = (config: Config) => {
 	});
 	const logger = pino({ level: config?.logLevel ?? 'info' }, transport).child(
 		{
-			instanceId: config.instanceId,
+			context: {
+				instanceId: config.instanceId,
+			},
 		},
 	);
+
 	return logger;
 };
 
-let rootLogger: Logger;
-export const getLogger = () => {
-	if (rootLogger) {
-		return rootLogger;
+export const getGlobalLogger = (): Logger => {
+	const logger = (globalThis as any)[GlobalThisLogger];
+	if (logger) {
+		return logger;
 	}
 
-	const config = getConfig();
-	rootLogger = createLogger(config);
-	return rootLogger;
+	(globalThis as any)[GlobalThisLogger] = createLogger();
+	return (globalThis as any)[GlobalThisLogger];
 };

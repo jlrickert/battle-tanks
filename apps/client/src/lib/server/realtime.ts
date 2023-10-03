@@ -1,23 +1,35 @@
-import { getLogger } from './logger';
-import type { ExtendedWebSocketServer } from './webSocketUtils';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getGlobalLogger, type Logger } from './logger';
+import { getGlobalRedisClient, type RedisClient } from './redis';
+import {
+	getGlobalWebSocketServer,
+	type ExtendedWebSocketServer,
+} from './webSocketUtils';
 
-const rtsLog = getLogger().child({ scope: 'rts' });
-
-export const GlobalThisRTS = Symbol.for('sveltekit.rts');
+const GlobalThisRTS = Symbol.for('sveltekit.rts');
+export const RTS_SCOPE = 'rts';
 
 export class RealTimeServer {
-	constructor(private wss: ExtendedWebSocketServer) {}
-	init() {
-		this.wss;
+	private log: Logger;
+	constructor(
+		private wss: ExtendedWebSocketServer,
+		private redis: RedisClient,
+	) {
+		this.log = getGlobalLogger().child({ scope: RTS_SCOPE });
+	}
+	reset() {
+		this.log.trace('calling reset');
 	}
 }
 
-let realtimeServer: RealTimeServer;
-export const getGlobalRTS = (wss: ExtendedWebSocketServer) => {
-	if (realtimeServer) {
-		return realtimeServer;
+export const getGlobalRealtimeServer = (): RealTimeServer => {
+	const rts = (globalThis as any)[GlobalThisRTS];
+	if (rts) {
+		return rts;
 	}
 
-	realtimeServer = new RealTimeServer(wss);
-	return realtimeServer;
+	const wss = getGlobalWebSocketServer();
+	const redis = getGlobalRedisClient();
+	(globalThis as any)[GlobalThisRTS] = new RealTimeServer(wss, redis);
+	return (globalThis as any)[GlobalThisRTS];
 };
