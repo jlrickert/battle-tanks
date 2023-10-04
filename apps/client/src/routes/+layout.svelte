@@ -1,5 +1,6 @@
-<script lang="ts">
-	import { sayHello } from '@shared/models';
+<script lang='ts'>
+	import { onMount } from 'svelte';
+	import '../app.css';
 
 	let webSocketEstablished = false;
 	let ws: WebSocket | null = null;
@@ -30,32 +31,62 @@
 		});
 	};
 
+	onMount(() => {
+		establishWebSocket();
+	});
+
 	const requestData = async () => {
 		const res = await fetch('/api/test');
 		const data = await res.json();
 		console.log('Data from GET endpoint', data);
 		logEvent(`[GET] data received: ${JSON.stringify(data)}`);
 	};
+
+	let primaryColor = '#ff0000';
+	let secondaryColor = '#00ff00';
+	let tertiaryColor = '#0000ff';
+
+	let rootElement: HTMLDivElement;
+	$: rootElement && rootElement.style.setProperty('--color-primary', primaryColor);
+	$: rootElement && rootElement.style.setProperty('--color-secondary', secondaryColor);
+	$: rootElement && rootElement.style.setProperty('--color-tertiary', tertiaryColor);
 </script>
 
-<nav>
+<div bind:this={rootElement} class='h-screen bg-primary'>
+	<nav>
+		<ul>
+			<li><a href='/'>Battle Tanks</a></li>
+			<li><a href='/admin'>Admin</a></li>
+			<li><a href='/room/1'>Room</a></li>
+		</ul>
+	</nav>
+
+	<input type='color' bind:value={primaryColor} class='aspect-square'>
+	<input type='color' bind:value={secondaryColor} class='aspect-square'>
+	<input type='color' bind:value={tertiaryColor} class='aspect-square'>
+
+	<slot />
+
+	<button disabled={webSocketEstablished}
+			on:click={() => establishWebSocket()}>
+		Establish WebSocket connection
+	</button>
+
+	<button on:click={() => requestData()}> Request Data from GET endpoint
+	</button>
+
 	<ul>
-		<li><a href="/">Battle Tanks</a></li>
-		<li><a href="/admin">Admin</a></li>
-		<li><a href="/room/1">Room</a></li>
+		{#each log as event}
+			<li>{event}</li>
+		{/each}
 	</ul>
-</nav>
 
-<slot />
+</div>
 
-<button disabled={webSocketEstablished} on:click={() => establishWebSocket()}>
-	Establish WebSocket connection
-</button>
-
-<button on:click={() => requestData()}> Request Data from GET endpoint</button>
-
-<ul>
-	{#each log as event}
-		<li>{event}</li>
-	{/each}
-</ul>
+<style>
+    :global(:root) {
+        --color-primary: red;
+        --color-secondary: blue;
+        --color-tertiary: green;
+    }
+</style>
