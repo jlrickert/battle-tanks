@@ -1,0 +1,58 @@
+{
+    "useTabs": true,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "printWidth": 80,
+    "editorconfig": true,
+    "plugins": [
+        "prettier-plugin-svelte"
+    ],
+    "pluginSearchDirs": [
+        "."
+    ],
+    "overrides": [
+        {
+            "files": ["*.ts"],
+            "options": {
+                "singleQuote": false,
+                "useTabs": true,
+                "tabWidth": 4
+            }
+        },
+        {
+            "files": "*.svelte",
+            "options": {
+                "parser": "svelte"
+            }
+        },
+        {
+            "files": [
+                "*.yaml",
+                "*.yml"
+            ],
+            "options": {
+                "useTabs": false,
+                "tabWidth": 2,
+                "parser": "yaml"
+            }
+        },
+        {
+            "files": [
+                "*.json"
+            ],
+            "options": {
+                "useTabs": true
+            }
+        },
+        {
+            "files": "*.md",
+            "options": {
+                "useTabs": false,
+                "tabWidth": 2,
+                "proseWrap": "always",
+                "parser": "markdown"
+            }
+        }
+    ]
+}

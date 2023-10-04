@@ -1,24 +1,20 @@
-import {
-	getGlobalWebSocketServer,
-	onHttpServerUpgrade,
-	type ExtendedWebSocket,
-} from './src/lib/server/webSocketUtils';
-import { getGlobalLogger } from './src/lib/server/logger';
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vitest/config';
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vitest/config";
+import { getGlobalWebSocketServer } from "./src/lib/server/webSocketUtils";
+import { getGlobalLogger } from "./src/lib/server/logger";
 
 export default defineConfig({
 	plugins: [
 		sveltekit(),
 		{
-			name: 'integratedWebsocketServer',
+			name: "integratedWebsocketServer",
 			configureServer(server) {
 				const wss = getGlobalWebSocketServer();
 				console.log(
-					`[Vite] Configure Server: instanceId=${wss.instanceId},wssId=${wss.wssId}`,
+					`[Vite] Configure Server: instanceId=${wss.instanceId},wssId=${wss.id}`,
 				);
-				server.httpServer?.on('upgrade', onHttpServerUpgrade);
-				server.httpServer?.on('error', (error) => {
+				server.httpServer?.on("upgrade", wss.onHttpServerUpgrade);
+				server.httpServer?.on("error", (error) => {
 					getGlobalLogger().error({ error }, `Server error`);
 				});
 				// server.httpServer?.on('close', () => {
@@ -30,10 +26,10 @@ export default defineConfig({
 			configurePreviewServer(server) {
 				const wss = getGlobalWebSocketServer();
 				console.log(
-					`[Vite] Configure Preview Server: instanceId=${wss.instanceId},wssId=${wss.wssId}`,
+					`[Vite] Configure Preview Server: instanceId=${wss.instanceId},wssId=${wss.id}`,
 				);
-				server.httpServer?.on('upgrade', onHttpServerUpgrade);
-				server.httpServer?.on('error', (error) => {
+				server.httpServer?.on("upgrade", wss.onHttpServerUpgrade);
+				server.httpServer?.on("error", (error) => {
 					getGlobalLogger().error({ error }, `Server error`);
 				});
 				// server.httpServer.on('close', () => {
@@ -62,6 +58,6 @@ export default defineConfig({
 		},
 	],
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+		include: ["src/**/*.{test,spec}.{js,ts}"],
 	},
 });

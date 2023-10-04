@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { MongoClient } from 'mongodb';
-import { getGlobalConfig } from './config';
-import { getGlobalLogger, type Logger } from './logger';
+import { MongoClient } from "mongodb";
+import { getGlobalConfig } from "./config";
+import { getGlobalLogger, type Logger } from "./logger";
 
-const GlobalThisDB = Symbol.for('sveltekit.mongo');
-export const DB_SCOPE = 'mongo';
+const GlobalThisDB = Symbol.for("sveltekit.mongo");
+export const DB_SCOPE = "mongo";
 
 export type Client = ReturnType<typeof createMongoClient>;
 
@@ -20,7 +20,7 @@ export class Database {
 		this.log = getGlobalLogger().child({ scope: DB_SCOPE });
 	}
 	reset() {
-		this.log.trace('calling reset');
+		this.log.trace("calling reset");
 	}
 }
 

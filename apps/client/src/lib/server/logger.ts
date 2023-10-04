@@ -1,39 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import pino from 'pino';
-import { getGlobalConfig } from './config';
-
-const GlobalThisLogger = Symbol.for('sveltekit.logger');
+import pino from "pino";
+import { type Config, getGlobalConfig } from "./config";
+import { createGlobalGroup } from "./globalGroup";
 
 export type Logger = ReturnType<typeof createLogger>;
-export type Level = 'trace' | 'debug' | 'warn' | 'info' | 'error' | 'critical';
+export type Level = "trace" | "debug" | "warn" | "info" | "error" | "critical";
 
-const createLogger = () => {
-	const config = getGlobalConfig();
+const createLogger = (config: Config) => {
 	const transport = pino.transport({
-		target: 'pino-mongodb',
+		target: "pino-mongodb",
 		options: {
 			uri: config?.mongoURI,
-			database: 'battle-tanks',
-			collection: 'logs',
+			database: "battle-tanks",
+			collection: "logs",
 		},
 	});
-	const logger = pino({ level: config?.logLevel ?? 'info' }, transport).child(
-		{
-			context: {
-				instanceId: config.instanceId,
-			},
-		},
-	);
-
-	return logger;
+	return pino({ level: config?.logLevel ?? "info" }, transport).child({
+		instanceId: config.instanceId,
+	});
 };
 
-export const getGlobalLogger = (): Logger => {
-	const logger = (globalThis as any)[GlobalThisLogger];
-	if (logger) {
-		return logger;
-	}
-
-	(globalThis as any)[GlobalThisLogger] = createLogger();
-	return (globalThis as any)[GlobalThisLogger];
-};
+export const getGlobalLogger = createGlobalGroup("sveltekit.logger", () => {
+	const config = getGlobalConfig();
+	return createLogger(config);
+});

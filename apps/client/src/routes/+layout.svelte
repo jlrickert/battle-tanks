@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { sayHello } from '@shared/models';
-	sayHello();
 
 	let webSocketEstablished = false;
 	let ws: WebSocket | null = null;
@@ -53,7 +52,7 @@
 	Establish WebSocket connection
 </button>
 
-<button on:click={() => requestData()}> Request Data from GET endpoint </button>
+<button on:click={() => requestData()}> Request Data from GET endpoint</button>
 
 <ul>
 	{#each log as event}

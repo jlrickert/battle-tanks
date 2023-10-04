@@ -1,72 +1,42 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { building } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
-import { getGlobalWebSocketServer } from '$lib/server/webSocketUtils';
-import type { ExtendedWebSocket } from '$lib/server/webSocketUtils';
-import { getGlobalRealtimeServer } from '$lib/server/realtime';
-import { getGlobalLogger } from '$lib/server/logger';
-import { getGlobalConfig } from '$lib/server/config';
-import { getGlobalRedisClient } from '$lib/server/redis';
+import { building } from "$app/environment";
+import type { Handle } from "@sveltejs/kit";
+import { getGlobalWebSocketServer } from "$lib/server/webSocketUtils";
+import { getGlobalRealtimeServer } from "$lib/server/realtime";
+import { getGlobalLogger } from "$lib/server/logger";
+import { getGlobalConfig } from "$lib/server/config";
+import { getGlobalRedisClient } from "$lib/server/redis";
+import { createGlobalGroup } from "$lib/server/globalGroup";
 
-const serverLog = getGlobalLogger().child({
-	scope: 'server',
-});
-
-// This can be extracted into a separate file
-let wssInitialized = false;
-const startupWebsocketServer = () => {
-	if (wssInitialized) {
-		return;
-	}
-
-	serverLog.trace('Setup WSS server');
+const startupWebsocketServer = createGlobalGroup("game logic", () => {
 	const wss = getGlobalWebSocketServer();
-	if (wss !== undefined) {
-		wss.log.trace('Creating ping logic');
-		wss.on('connection', (ws: ExtendedWebSocket) => {
-			// This is where you can authenticate the client from the request
-			// const session = await getSessionFromCookie(request.headers.cookie || '');
-			// if (!session) ws.close(1008, 'User not authenticated');
-			// ws.userId = session.userId;
-			ws.send(
-				JSON.stringify({
-					msg: 'Hello',
-					instanceId: getGlobalConfig().instanceId,
-					wssId: ws.wssId,
-					socketId: ws.socketId,
-				}),
-			);
-			ws.log.trace('Sending hello');
+	wss.addMiddleware(({ ws, req }, next) => {
+		ws.userId = req.headers?.cookie;
+		next();
+	});
 
-			let count = 0;
-			const pid = setInterval(() => {
-				ws.send(`Ping ${count}, ${ws.socketId}`);
-				ws.log.debug({ count }, `ping`);
-				count++;
-			}, 5000);
+	wss.onConnect((ws) => {
+		ws.send("Hello from sveltekit");
 
-			ws.on('error', (error) => {
-				ws.log.error({ error }, 'some error detected');
-			});
-
-			ws.on('close', () => {
-				ws.log.debug(`clearing ping interval`);
-				clearInterval(pid);
-			});
+		ws.on("message", (data, isBinary) => {
+			console.log({ msg: "Data received", data, isBinary });
 		});
 
-		wss.on('close', () => {
-			wss.clients.forEach((ws: ExtendedWebSocket) => {
-				ws.close();
-				ws.log.trace('Closing client');
-			});
-			wss.log.debug('Server closed');
+		let count = 0;
+		const interval = setInterval(() => {
+			ws.send(`Ping ${ws.id} ${count}`);
+			count++;
+		}, 5000);
+
+		ws.on("close", () => {
+			clearInterval(interval);
 		});
-		wssInitialized = true;
-	} else {
-		serverLog.error('wss not found');
-	}
-};
+	});
+
+	wss.init();
+
+	return () => {};
+});
 
 export const handle: Handle = async ({ event, resolve }) => {
 	startupWebsocketServer();
@@ -97,10 +67,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.redis = redis;
 		}
 	}
-	const response = await resolve(event, {
-		filterSerializedResponseHeaders: (name) => name === 'content-type',
+	return resolve(event, {
+		filterSerializedResponseHeaders: (name) => name === "content-type",
 	});
-	return response;
 };
 
 // function shutdownGracefully() {
