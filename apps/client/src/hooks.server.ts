@@ -30,7 +30,9 @@ const serverState = createGlobalGroup("server state", () => {
 
 	return {
 		getUsers: () => {
-			const rec: { [userId: string]: User } = {};
+			const rec: {
+				[userId: string]: User;
+			} = {};
 			for (const [userId, user] of users) {
 				rec[userId] = { ...user }; // FIXME: deep clone this
 			}
@@ -132,7 +134,13 @@ const attachUser = async (event: RequestEvent) => {
 	let sessionId = cookies.get("session");
 	if (!sessionId) {
 		sessionId = nanoid();
-		cookies.set("session", nanoid());
+		cookies.set("session", sessionId, {
+			path: "/",
+			httpOnly: true,
+			sameSite: "strict",
+			secure: true,
+			maxAge: 60 * 60 * 24 * 30,
+		});
 	}
 	event.locals.user = getOrCreateUser(sessionId);
 };
