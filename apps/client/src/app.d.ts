@@ -1,20 +1,25 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
-import type { ExtendedWebSocketServer } from "$lib/server/webSocketUtils";
+import type { WebSocketServer } from "$lib/server/websockets/webSocketServer";
 import type { RealTimeServer } from "$lib/server/realtime";
 import type { RedisClient } from "$lib/server/redis";
 import type { Config } from "$lib/server/config";
 import type { Logger } from "$lib/server/logger";
+import type { User } from "$lib/sessions";
 
 declare global {
 	namespace App {
-		// interface Error {}
+		interface Error {
+			errorId: string;
+		}
+
 		interface Locals {
-			wss?: ExtendedWebSocketServer;
+			wss?: WebSocketServer;
 			rts?: RealTimeServer;
 			redis?: RedisClient;
 			config?: Config;
 			logger?: Logger;
+			user: User;
 		}
 
 		// interface PageData {}

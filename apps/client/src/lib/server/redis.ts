@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import redis from "redis";
-import { type Config, getGlobalConfig } from "./config";
 import { createGlobalGroup } from "$lib/server/globalGroup";
 import { getGlobalLogger } from "$lib/server/logger";
+import { type Config, getGlobalConfig } from "./config";
 
 const REDIS_SCOPE = "redis";
 

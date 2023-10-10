@@ -1,7 +1,8 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vitest/config";
-import { getGlobalWebSocketServer } from "./src/lib/server/webSocketUtils";
+import { getGlobalWebSocketServer } from "./src/lib/server/websockets/webSocketServer";
 import { getGlobalLogger } from "./src/lib/server/logger";
+import { getGlobalConfig } from "./src/lib/server/config";
 
 export default defineConfig({
 	plugins: [
@@ -10,8 +11,9 @@ export default defineConfig({
 			name: "integratedWebsocketServer",
 			configureServer(server) {
 				const wss = getGlobalWebSocketServer();
+				const config = getGlobalConfig();
 				console.log(
-					`[Vite] Configure Server: instanceId=${wss.instanceId},wssId=${wss.id}`,
+					`[Vite] Configure Server: instanceId=${config.instanceId},wssId=${wss.wssId}`,
 				);
 				server.httpServer?.on("upgrade", wss.onHttpServerUpgrade);
 				server.httpServer?.on("error", (error) => {
@@ -25,8 +27,9 @@ export default defineConfig({
 
 			configurePreviewServer(server) {
 				const wss = getGlobalWebSocketServer();
+				const config = getGlobalConfig();
 				console.log(
-					`[Vite] Configure Preview Server: instanceId=${wss.instanceId},wssId=${wss.id}`,
+					`[Vite] Configure Preview Server: instanceId=${config.instanceId},wssId=${wss.wssId}`,
 				);
 				server.httpServer?.on("upgrade", wss.onHttpServerUpgrade);
 				server.httpServer?.on("error", (error) => {
@@ -37,6 +40,7 @@ export default defineConfig({
 				// 	wss.close();
 				// });
 			},
+
 			// handleHotUpdate() {
 			// 	const wss = getGlobalWebSocketServer();
 			// 	wss.clients.forEach((ws: ExtendedWebSocket) => {

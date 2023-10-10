@@ -3,8 +3,8 @@ import { getGlobalLogger } from "./logger";
 import { getGlobalRedisClient, type RedisClient } from "./redis";
 import {
 	getGlobalWebSocketServer,
-	type ExtendedWebSocketServer,
-} from "./webSocketUtils";
+	type WebSocketServer,
+} from "./websockets/webSocketServer";
 import { nanoid } from "nanoid";
 import { createGlobalGroup } from "$lib/server/globalGroup";
 
@@ -33,7 +33,7 @@ export const RTS_SCOPE = "rts";
 
 export type RealTimeServer = ReturnType<typeof createRealTimeServer>;
 const createRealTimeServer = (
-	wss: ExtendedWebSocketServer,
+	wss: WebSocketServer,
 	redis: RedisClient,
 ) => {
 	const id = `rts-${nanoid()}`;

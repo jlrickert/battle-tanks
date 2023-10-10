@@ -5,9 +5,12 @@
  *
  * Inspired by groups in neovim (don't remember the name)
  */
-export const createGlobalGroup = <A>(name: string, init: () => A) => {
+export const createGlobalGroup = <A>(
+	name: string,
+	init: () => A,
+): (() => A) => {
 	const key = Symbol.for(name);
-	return (): A => {
+	return () => {
 		let item = (globalThis as any)[key];
 		if (item === undefined) {
 			item = init();
@@ -15,12 +18,4 @@ export const createGlobalGroup = <A>(name: string, init: () => A) => {
 		}
 		return item;
 	};
-};
-export const initGlobalGroup = <A>(name: string, init: () => A) => {
-	const key = Symbol.for(name);
-	let item = (globalThis as any)[key];
-	if (item === undefined) {
-		item = init();
-		(globalThis as any)[key] = item;
-	}
 };
