@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 import { getGlobalWebSocketServer } from "./src/lib/server/websockets/webSocketServer";
 import { getGlobalLogger } from "./src/lib/server/logger";
 import { getGlobalConfig } from "./src/lib/server/config";
+import { Stringer } from "./src/lib/message";
 
 export default defineConfig({
 	plugins: [
@@ -10,7 +11,7 @@ export default defineConfig({
 		{
 			name: "integratedWebsocketServer",
 			configureServer(server) {
-				const wss = getGlobalWebSocketServer();
+				const wss = getGlobalWebSocketServer(Stringer);
 				const config = getGlobalConfig();
 				console.log(
 					`[Vite] Configure Server: instanceId=${config.instanceId},wssId=${wss.wssId}`,
@@ -26,7 +27,7 @@ export default defineConfig({
 			},
 
 			configurePreviewServer(server) {
-				const wss = getGlobalWebSocketServer();
+				const wss = getGlobalWebSocketServer(Stringer);
 				const config = getGlobalConfig();
 				console.log(
 					`[Vite] Configure Preview Server: instanceId=${config.instanceId},wssId=${wss.wssId}`,

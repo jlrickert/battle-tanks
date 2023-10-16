@@ -1,24 +1,30 @@
 import { WebSocket as BaseWebSocket } from "ws";
-import { absurd } from "../../funcUtils";
+import type { Document } from "mongodb";
+import { absurd, pipe } from "fp-ts/function";
+import type { StringerT } from "../../stringerT";
+import { option } from "fp-ts";
+import { getGlobalLogger } from "../logger";
 
 export type ReadyState = "connecting" | "open" | "closing" | "closed";
 
-export type WebSocket = {
+export type WebSocket<A extends Document> = {
 	readonly sessionId: string;
 	getReadyState(): ReadyState;
 	ping(): void;
 	onPong(f: () => void): void;
-	onMessage(f: (message: string) => void): void;
+	onMessage(f: (message: A) => void): void;
 	onClose(f: () => void): void;
-	send(data: string): void;
+	send(data: A): void;
 	terminate(): void;
 };
 
-export const createWebSocket = (args: {
+export const createWebSocket = <A extends Document>(args: {
 	sessionId: string;
 	ws: BaseWebSocket;
-}): WebSocket => {
-	const { ws, sessionId } = args;
+	stringer: StringerT<A>;
+}): WebSocket<A> => {
+	const { ws, sessionId, stringer } = args;
+	const log = getGlobalLogger().child({ sessionId, scope: "webSocket" });
 	return {
 		sessionId,
 		getReadyState: () => {
@@ -41,11 +47,16 @@ export const createWebSocket = (args: {
 			}
 		},
 		send: (message) => {
-			ws.send(message);
+			ws.send(stringer.serialize(message));
 		},
 		onMessage: (f) => {
 			ws.on("message", (data) => {
-				f(data.toString());
+				const message = pipe(data.toString(), stringer.parse);
+				if (option.isNone(message)) {
+					log.warn({ data }, "Unable to parse data");
+					throw new Error("Unable to parse data");
+				}
+				f(message.value);
 			});
 		},
 		onClose: (f: () => void) => {

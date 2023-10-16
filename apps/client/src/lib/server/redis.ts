@@ -17,10 +17,7 @@ export type RedisClient = ReturnType<typeof createRedisClient>;
 export const createRedisClient = (config: Config) => {
 	const client = createBaseRedisClient(config);
 	const log = getGlobalLogger().child({ scope: REDIS_SCOPE });
-	return {
-		log,
-		client,
-	};
+	return client;
 };
 
 export const getGlobalRedisClient = createGlobalGroup<RedisClient>(

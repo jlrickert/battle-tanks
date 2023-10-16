@@ -1,16 +1,64 @@
 version: '3'
 
 services:
+#   game-server:
+#     build:
+#       context: .
+#       target: dev
+#     volumes:
+#       - .:/app
+#       - node_modules:/app/node_modules
+#     deploy:
+#       replicas: 3
+#     depends_on:
+#       - redis
+#       - mongodb
+#     environment:
+#       - BATTLE_TANKS_URL=http://game-server:5137
+#       - BATTLE_TANKS_ROOM_CAPACITY=4
+#       - BATTLE_TANKS_MONGO_URI=mongodb://mongodb:27017
+#       - BATTLE_TANKS_MONGO_USER=admin
+#       - BATTLE_TANKS_MONGO_PASSWORD=secretpassword
+#       - BATTLE_TANKS_REDIS_HOST=redis://redis:6379
+#       - BATTLE_TANKS_LOGGING_ENABLE=1
+#       - BATTLE_TANKS_LOGGING_SCOPES=all
+#       - BATTLE_TANKS_LOGGING_LEVEL=TRACE
+#     labels:
+#       - 'traefik.enable=true'
+#       - 'traefik.http.routers.game-server.rule=Host(`battle-tanks.jlrickert.me`)'
+#       - 'traefik.http.routers.game-server.entrypoints=web'
+#       # - 'traefik.https.routers.battle-tanks.entrypoints=websecure'
+#       # - 'traefik.http.routers.battle-tanks.entrypoints=websecure'
   redis:
+    # image: redis:7-alpine
     image: redis/redis-stack:7.2.0-v2
     platform: linux/arm64
     restart: always
     ports:
       - '8001:8001' # redist insight
+    #   - '6379:6379'
+    # command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
     volumes:
       - redis_cache:/data
     environment:
       REDIS_ARGS: '--appendonly yes --aof-use-rdb-preamble yes'
+#   traefik:
+#     image: traefik:v2.10
+#     command:
+#       - '--api.insecure=true'
+#       - '--providers.docker=true'
+#       - '--providers.docker.exposedbydefault=false'
+#       - '--entrypoints.web.address=:80'
+#       - '--entrypoints.websecure.address=:443'
+#       - '--log.format=json'
+#     ports:
+#       # The HTTP port
+#       - '80:80'
+#       - '443:443'
+#       - '8080:8080'
+#     volumes:
+#       # So that Traefik can listen to the Docker events
+#       - /var/run/docker.sock:/var/run/docker.sock
   mongodb:
     image: mongo:6
     restart: always
@@ -23,5 +71,6 @@ services:
       - mongo_data:/data/db
 
 volumes:
+  node_modules:
   mongo_data:
   redis_cache:

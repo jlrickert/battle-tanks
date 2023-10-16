@@ -3,12 +3,13 @@
 	import { nanoid } from 'nanoid';
 	import NavItem from '$lib/components/NavItem.svelte';
 	import { loginSession } from '$lib/store';
-	import { createMessage } from '$lib/messages';
 	import type { LayoutServerData } from './$types';
 	import '../app.css';
+	import { messageM } from '$lib/message';
 
 	export let data: LayoutServerData;
-	$loginSession = data.user ? data.user : $loginSession;
+	$loginSession = data.user;
+	console.log($loginSession);
 
 	let webSocketEstablished = false;
 	let ws: WebSocket | null = null;
@@ -26,15 +27,14 @@
 		ws = new WebSocket(`${protocol}//${window.location.host}/websocket`);
 		ws.addEventListener('open', (event) => {
 			webSocketEstablished = true;
-			ws?.send(
-				JSON.stringify(
-					createMessage({
-						id: nanoid(),
-						event: 'fastForward',
-						data: {},
-					}),
-				),
-			);
+			const message = messageM.make({
+				id: nanoid(),
+				event: 'fastForward',
+				request: { roomId: nanoid() },
+				response: null,
+			});
+			const data = messageM.Stringer.serialize(message);
+			ws?.send(data);
 			console.log('[websocket] connection open', event);
 			logEvent('[websocket] connection open');
 		});
@@ -56,12 +56,14 @@
 
 	$: {
 		if (ws && ws.readyState === ws.OPEN) {
-			const message = createMessage({
+			const message = messageM.make({
 				id: nanoid(),
-				event: 'profile',
-				data: $loginSession,
+				event: 'updateProfile',
+				request: $loginSession.profile,
+				response: null,
 			});
-			ws.send(JSON.stringify(message));
+			const data = messageM.Stringer.serialize(message);
+			ws.send(data);
 		}
 	}
 </script>
@@ -69,9 +71,9 @@
 <div
 	class="grid absolute h-full w-full grid-rows-[auto_1fr] grid-cols-1 bg-secondary"
 	style={`
-		--color-primary: ${$loginSession.color.primary};
-		--color-secondary: ${$loginSession.color.secondary};
-		--color-tertiary: ${$loginSession.color.tertiary};
+		--color-primary: ${$loginSession?.profile?.color?.primary};
+		--color-secondary: ${$loginSession?.profile?.color?.secondary};
+		--color-tertiary: ${$loginSession?.profile?.color?.tertiary};
 	`}
 >
 	<header>
@@ -88,8 +90,8 @@
 	<main
 		class="flex flex-col justify-center items-center overflow-y-auto container bg-secondary ml-auto mr-auto"
 	>
-		{#if $loginSession && $loginSession.name.length > 0}
-			<p>Hi {$loginSession.name}</p>
+		{#if $loginSession && $loginSession?.profile?.nickname?.length > 0}
+			<p>Hi {$loginSession.profile.nickname}</p>
 		{/if}
 		<slot />
 

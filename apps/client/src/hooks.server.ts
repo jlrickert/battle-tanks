@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Handle, RequestEvent } from "@sveltejs/kit";
 import { building } from "$app/environment";
-import invariant from "tiny-invariant";
 import { nanoid } from "nanoid";
 import { getGlobalWebSocketServer } from "$lib/server/websockets/webSocketServer";
 import { getGlobalRealtimeServer } from "$lib/server/realtime";
@@ -9,118 +8,90 @@ import { getGlobalLogger } from "$lib/server/logger";
 import { getGlobalConfig } from "$lib/server/config";
 import { getGlobalRedisClient } from "$lib/server/redis";
 import { createGlobalGroup } from "$lib/server/globalGroup";
-import type { User } from "$lib/sessions";
-import { createAnonymousUser } from "$lib/sessions";
-import { createMessage, parseMessage } from "$lib/messages";
-import { absurd } from "$lib/funcUtils";
+import { messageM } from "$lib";
+import type { WebSocket } from "$lib/server/websockets";
+import { absurd, pipe } from "fp-ts/function";
+import { option } from "fp-ts";
+import type { Message } from "$lib/message";
+import { getGlobalStorage } from "$lib/server/storage/storage";
+import { userM } from "$lib/models/user";
+import { sessionM } from "$lib/models/session";
 
-const serverState = createGlobalGroup("server state", () => {
-	type SessionId = string;
-	type UserId = string;
-	const sessionMap = new Map<SessionId, UserId>();
-	const users = new Map<UserId, User>();
-
-	const updateUser = (userId: string, f: (user: User) => User) => {
-		const user = users.get(userId);
-		if (!user) {
+const handleMessage = async (args: {
+	ws: WebSocket<Message>;
+	message: Message;
+}) => {
+	const { ws, message } = args;
+	const redis = getGlobalRedisClient();
+	const storage = await getGlobalStorage();
+	switch (message.event) {
+		case "fastForward": {
+			const state = await redis.get({ gameId: message.request.roomId });
+			const profile = pipe(message, messageM.respond());
+			ws.send(messageM.respond());
 			return;
 		}
-		users.set(user.id, f(user));
-	};
+		case "updateProfile": {
+			return;
+		}
+		default: {
+			return absurd(message);
+		}
+	}
+};
 
-	return {
-		getUsers: () => {
-			const rec: {
-				[userId: string]: User;
-			} = {};
-			for (const [userId, user] of users) {
-				rec[userId] = { ...user }; // FIXME: deep clone this
-			}
-			return rec;
-		},
-		updateUserBySessionId: (
-			sessionId: SessionId,
-			f: (user: User) => User,
-		): void => {
-			const userId = sessionMap.get(sessionId);
-			if (!userId) {
-				return;
-			}
-			return updateUser(userId, f);
-		},
-		updateUser,
-		getOrCreateUser: (sessionId: SessionId): User => {
-			const userId = sessionMap.get(sessionId);
-			if (!userId) {
-				const user = createAnonymousUser({
-					id: nanoid(),
-					name: `Anon-${nanoid(4)}`,
-				});
-				sessionMap.set(sessionId, user.id);
-				users.set(user.id, user);
-				return user;
-			}
-			const user = users.get(userId);
-			invariant(
-				user,
-				"Logic Error: user expected to exit when userId exists",
-			);
-			return user;
-		},
-	};
-});
-
-const startupWebsocketServer = createGlobalGroup("game logic", () => {
-	const { updateUser, getOrCreateUser, getUsers } = serverState();
-
-	const wss = getGlobalWebSocketServer();
-
+const startupWebsocketServer = createGlobalGroup("game logic", async () => {
+	console.log({ message: "hooks", stringer: messageM.Stringer });
+	const wss = getGlobalWebSocketServer(messageM.Stringer);
 	wss.addMiddleware(({ ws }) => {
-		ws.onMessage((data) => {
-			const message = parseMessage(data);
-			switch (message.event) {
-				case "profile": {
-					const updatedUser = message.data;
-					updateUser(updatedUser.id, () => updatedUser);
-					wss.broadcast(
-						JSON.stringify(message),
-						(_ws) => ws.sessionId !== _ws.sessionId,
-					);
-					return;
-				}
-				case "fastForward": {
-					const user = getOrCreateUser(ws.sessionId);
-					ws.send(
-						JSON.stringify(
-							createMessage({
-								id: message.id,
-								event: message.event,
-								data: {
-									response: {
-										currentUserId: user.id,
-										users: getUsers(),
-									},
-								},
-							}),
-						),
-					);
-					return;
-				}
-				default: {
-					return absurd(message);
-				}
-			}
+		ws.onMessage(async (message) => {
+			await handleMessage({ ws, message });
+			// const message = parseMessage(data);
+			// switch (message.event) {
+			// 	case "profile": {
+			// 		const updatedUser = message.data;
+			// 		wss.broadcast(
+			// 			data,
+			// 			(_ws) => ws.sessionId !== _ws.sessionId,
+			// 		);
+			// 		await storage.user.update(
+			// 			updatedUser.id,
+			// 			() => updatedUser,
+			// 		)();
+			// 		return;
+			// 	}
+			// 	case "fastForward": {
+			// 		const user = storageM.getUserBySession(ws.sessionId);
+			// 		messageM.ws.send(
+			// 			JSON.stringify(
+			// 				createMessage({
+			// 					id: message.id,
+			// 					event: message.event,
+			// 					data: {
+			// 						response: {
+			// 							currentUserId: user.id,
+			// 							users: getUsers(),
+			// 						},
+			// 					},
+			// 				}),
+			// 			),
+			// 		);
+			// 		return;
+			// 	}
+			// 	default: {
+			// 		return absurd(message);
+			// 	}
 		});
 
-		let count = 0;
-		const interval = setInterval(() => {
-			ws.send(`Ping ${ws.sessionId} ${count}`);
-			count++;
-		}, 5000);
-
-		ws.onClose(() => {
-			clearInterval(interval);
-		});
+		// let count = 0;
+		// const interval = setInterval(() => {
+		// 	ws.send(`Ping ${ws.sessionId} ${count}`);
+		// 	count++;
+		// }, 5000);
+		//
+		// ws.onClose(() => {
+		// 	clearInterval(interval);
+		// });
 	});
 
 	wss.init();
@@ -128,25 +99,54 @@ const startupWebsocketServer = createGlobalGroup("game logic", () => {
 });
 
 const attachUser = async (event: RequestEvent) => {
-	const { getOrCreateUser } = serverState();
+	const storage = await getGlobalStorage();
 
 	const { cookies } = event;
-	let sessionId = cookies.get("session");
-	if (!sessionId) {
-		sessionId = nanoid();
-		cookies.set("session", sessionId, {
-			path: "/",
-			httpOnly: true,
-			sameSite: "strict",
-			secure: true,
-			maxAge: 60 * 60 * 24 * 30,
-		});
+	const sessionId = option.fromNullable(cookies.get("session"));
+	const session = option.isSome(sessionId)
+		? await storage.lookupSession(sessionId.value)
+		: option.none;
+	const user = option.isSome(session)
+		? await storage.lookupUser(session.value.userId)
+		: option.none;
+	const maxAge = 60 * 60 * 24 * 30;
+
+	if (option.isSome(user)) {
+		event.locals.user = user.value;
+		return;
 	}
-	event.locals.user = getOrCreateUser(sessionId);
+
+	if (option.isSome(session)) {
+		await storage.deleteSession(session.value.id);
+	}
+
+	const now = Date.now();
+	const newUser = userM.anonymousUser({
+		id: nanoid(),
+		createdAt: now,
+		updatedAt: now,
+		nickname: `Anon ${nanoid(4)}`,
+	});
+	const newSession = sessionM.make({
+		userId: newUser.id,
+		id: nanoid(),
+		expiresAt: now + maxAge,
+	});
+	await storage.createUser(newUser);
+	await storage.createSession(newSession);
+	cookies.set("session", newSession.id, {
+		path: "/",
+		httpOnly: true,
+		sameSite: "strict",
+		secure: true,
+		maxAge,
+	});
+	event.locals.user = newUser;
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
-	startupWebsocketServer();
+	console.log("HERE");
+	await startupWebsocketServer();
 	await attachUser(event);
 
 	// Skip WebSocket server when pre-rendering pages
@@ -161,7 +161,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.config = config;
 		}
 
-		const wss = getGlobalWebSocketServer();
+		const wss = getGlobalWebSocketServer(messageM.Stringer);
 		if (wss !== undefined) {
 			event.locals.wss = wss;
 		}
@@ -175,6 +175,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (redis !== undefined) {
 			event.locals.redis = redis;
 		}
+		// const db = getGlobalDatabase();
+		// if (db !== undefined) {
+		// 	event.locals.db = db;
+		// }
 	}
 	return resolve(event, {
 		filterSerializedResponseHeaders: (name) => name === "content-type",

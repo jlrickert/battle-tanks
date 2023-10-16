@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { parse } from "url";
+import invariant from "tiny-invariant";
 import { WebSocketServer as BaseWebSocketServer } from "ws";
 import { nanoid } from "nanoid";
 import type { IncomingMessage } from "http";
 import type { Duplex } from "stream";
+import type { Document } from "mongodb";
 import { createGlobalGroup } from "../globalGroup";
 import { getGlobalLogger } from "../logger";
 import {
@@ -12,9 +15,9 @@ import {
 	type Middleware,
 } from "./middleware";
 import { createWebSocket, type WebSocket } from "./webSocket";
-import invariant from "tiny-invariant";
+import type { StringerT } from "../../stringerT";
 
-export const WSS_SCOPE = "wss";
+export const WSS_SCOPE = "websocketServer";
 
 const createBaseServer = () => {
 	return new BaseWebSocketServer({
@@ -22,25 +25,26 @@ const createBaseServer = () => {
 	});
 };
 
-export type WebSocketServer = {
+export type WebSocketServer<A extends Document> = {
 	readonly wssId: string;
-	readonly clients: Map<string, WebSocket>;
+	readonly clients: Map<string, WebSocket<A>>;
 	init(): void;
-	addMiddleware(middleware: Middleware): void;
-	broadcast(data: string, filter?: (ws: WebSocket) => boolean): void;
+	addMiddleware(middleware: Middleware<A>): void;
+	broadcast(message: A, filter?: (ws: WebSocket<A>) => boolean): void;
 	onHttpServerUpgrade(req: IncomingMessage, sock: Duplex, head: Buffer): void;
 };
 
-const createExtendedWebSocketServer = (
-	baseWss: ReturnType<typeof createBaseServer>,
-): WebSocketServer => {
+const createExtendedWebSocketServer = <A extends Document>(
+	stringer: StringerT<A>,
+): WebSocketServer<A> => {
+	const baseWss = createBaseServer();
 	const wssId = nanoid();
 	const log = getGlobalLogger().child({ scope: WSS_SCOPE, wssId });
-	const middlewares: Middleware[] = [keepAliveMiddleware()];
-	const clients = new Map<string, WebSocket>();
+	const middlewares: Middleware<A>[] = [keepAliveMiddleware<A>()];
+	const clients = new Map<string, WebSocket<A>>();
 
 	let initiated = false;
-	const wss: WebSocketServer = {
+	const wss: WebSocketServer<A> = {
 		wssId,
 		clients,
 		addMiddleware: (middleware) => {
@@ -104,8 +108,7 @@ const createExtendedWebSocketServer = (
 			});
 		},
 		onHttpServerUpgrade: (req, sock, head) => {
-			const pathname = req.url ? new URL(req.url).pathname : null;
-			log.warn('Parsing url with deprecated "parse" api');
+			const pathname = req.url ? parse(req.url).pathname : null;
 			if (pathname !== "/websocket") return;
 
 			const { cookie } = req.headers;
@@ -115,7 +118,7 @@ const createExtendedWebSocketServer = (
 			}
 
 			baseWss.handleUpgrade(req, sock, head, (rawWs) => {
-				const ws = createWebSocket({ sessionId, ws: rawWs });
+				const ws = createWebSocket({ sessionId, ws: rawWs, stringer });
 				(rawWs as any).sessionId = ws.sessionId;
 				clients.set(sessionId, ws);
 				log.trace("Connection upgraded");
@@ -126,12 +129,12 @@ const createExtendedWebSocketServer = (
 	return wss;
 };
 
-export const getGlobalWebSocketServer = createGlobalGroup<WebSocketServer>(
-	"sveltekit.wss",
-	() => {
-		const wss = createBaseServer();
-		const server = createExtendedWebSocketServer(wss);
+export const getGlobalWebSocketServer = <A extends Document>(
+	stringer: StringerT<A>,
+) => {
+	return createGlobalGroup<WebSocketServer<A>>("sveltekit.wss", () => {
+		const server = createExtendedWebSocketServer<A>(stringer);
 		server.addMiddleware(loggingMiddleware);
 		return server;
-	},
-);
+	})();
+};

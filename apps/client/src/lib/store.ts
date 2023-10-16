@@ -1,9 +1,12 @@
 import { readable, writable } from "svelte/store";
 import { getContext, hasContext, setContext } from "svelte";
-import type { Color, User } from "$lib/sessions";
-import { createAnonymousUser, defaultColor } from "$lib/sessions";
 import { browser } from "$app/environment";
 import { nanoid } from "nanoid";
+import type { Color } from "$lib/models/color";
+import { colorM } from "$lib/models/color";
+import type { User } from "$lib/models/user";
+import { userM } from "$lib/models/user";
+import type { GameState } from "$lib/models/gameState";
 // import type { Session } from "$lib/sessions";
 
 // export const loginSession = writable<Session>(null);
@@ -44,18 +47,8 @@ export const readableStore = <T>(name: string, value: T) => {
 	return sharedStore(name, readable, value);
 };
 
-export const colorsStore = () => writableStore<Color>("colors", defaultColor);
+export const colorsStore = () =>
+	writableStore<Color>("colors", colorM.defaultColor);
 
-const getUserData = () => {
-	const data = window.localStorage.getItem("user");
-	if (!data) {
-		return null;
-	}
-	return JSON.parse(data);
-};
-
-export const loginSession = writable<User>(
-	browser
-		? getUserData()
-		: createAnonymousUser({ name: `Anon-${nanoid(4)}`, id: nanoid() }),
-);
+export const loginSession = writable<User>(null as any);
+export const gameState = writable<GameState | null>(null as any);

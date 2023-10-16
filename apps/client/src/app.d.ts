@@ -6,6 +6,7 @@ import type { RedisClient } from "$lib/server/redis";
 import type { Config } from "$lib/server/config";
 import type { Logger } from "$lib/server/logger";
 import type { User } from "$lib/sessions";
+import type {Database} from "$lib/server/db";
 
 declare global {
 	namespace App {
@@ -19,6 +20,7 @@ declare global {
 			redis?: RedisClient;
 			config?: Config;
 			logger?: Logger;
+			db?: Database;
 			user: User;
 		}
 

@@ -1,3 +1,17 @@
+import * as lens from "spectacles-ts";
+import * as lenz from "monocle-ts";
+
+export type Filter<A> = (pred: A) => boolean;
+export type Refinement<A, B extends A> = (value: A) => value is B;
+
+export { lens, lenz };
+
+export type Constructor<
+	A,
+	Omitted extends keyof A,
+	Optional extends keyof A,
+> = (args: Omit<A, Omitted | Optional> & Partial<Pick<A, Optional>>) => A;
+
 export type Result<T, E> = Ok<T> | Err<E>;
 
 export type Ok<T> = {
